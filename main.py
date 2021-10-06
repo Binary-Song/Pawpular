@@ -12,6 +12,12 @@ from model import *
 from torch.utils.data import DataLoader
 from ImageSource import ImageSource
 
+import torchvision
+import torch
+from torchvision import datasets, transforms
+
+from metrics import * 
+
 train_img_dir = "./data/train"
 
 if True:
@@ -58,60 +64,50 @@ if __name__ == '__main__':
     else:
         raise Exception("Use gpu to train instead!")
 
-    epochs = 10
+    transform = transforms.Compose([transforms.ToTensor(),
+                               transforms.Normalize(mean=[0.5, ],std=[0.5, ])])
 
-    df = pd.read_csv(train_csv).sample(frac=1.0,random_state=42)
-
-    paths = get_img_paths(df) # array
-    targets = get_targets(df) # numpy
-
-    src = ImageSource(resize=(128,128))
-    src.load_cache(cache_path)
+    data_train = datasets.MNIST(root = "./data/",
+                                transform=transform,
+                                train = True,
+                                download = True)
+    
+    data_test = datasets.MNIST(root = "./data/",
+                            transform=transform,
+                            train = False,
+                            download = True)
+                                
+    train_loader = DataLoader(
+                            dataset=data_train,
+                            batch_size = 64,
+                            shuffle=True)
+    
+    valid_loader = DataLoader(
+                            dataset=data_test,
+                            batch_size = 64,
+                            shuffle=True)
 
     model = ResNet([1,1,1,1]).to(device)  
 
-    fold_maker = KFold(n_splits=5, shuffle=True, random_state=42)
-    for k, (train_idx, valid_idx) in enumerate(fold_maker.split(X=paths, y=targets)):
+    baseline_model = BaselineModel(device, as_long=True, output_proba=True)
 
-        print(f"fold {k}")
+    optim = torch.optim.Adam(model.parameters()) 
 
-        img_size = (224, 224)
-        batch_size = 32
-        num_workers = 0
-
-        train_set = ImageDataset(
-            paths=[paths[i] for i in train_idx],
-            src=src,
-            targets=targets[train_idx],
-            resize=img_size)
-
-        valid_set = ImageDataset(
-            paths=[paths[i] for i in valid_idx],
-            src=src,
-            targets=targets[valid_idx],
-            resize=img_size)
-
-        train_loader = DataLoader(
-            train_set, batch_size=batch_size, num_workers=num_workers)
-
-        valid_loader = DataLoader(
-            valid_set, batch_size=batch_size, num_workers=num_workers)
-
-        X_prep = PawpularDatasetImagePreprocessor()
-        y_prep = PawpularDatasetLabelPreprocessor()
-
-        optim = torch.optim.Adam(model.parameters()) 
-
-        do_epochs(
-            epochs=epochs, 
-            train_loader=train_loader, 
-            valid_loader=valid_loader, 
-            model=model, 
-            optimizer=optim,  
-            metrics=[metrics.r2_score, metrics.mean_absolute_error], 
-            X_prepro=X_prep, 
-            y_prepro=y_prep, 
-            device=device)
+    do_epochs(
+        epochs=1000, 
+        train_loader=train_loader, 
+        valid_loader=valid_loader, 
+        model=model,
+        baseline_model=baseline_model,
+        optimizer=optim,  
+        metrics=[
+                AccuracyScore(),
+                F1Score(average='weighted'),
+                RocAucScore(average='macro', multi_class='ovr'), 
+                RocAucScore(average='weighted', multi_class='ovr'),], 
+        X_prepro=None, 
+        y_prepro=None, 
+        device=device)
 
         # train_plans = [{"name": "baseline", 
         #                 "model": baseline, 

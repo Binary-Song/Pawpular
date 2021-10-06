@@ -29,10 +29,7 @@ class ImageDataset:
         img = self.src[self.paths[i]]
         y = self.targets[i]
          
-        return {
-            "image": img,
-            "target": y 
-        } 
+        return img,  y  
 
 if __name__ == "__main__":
     train_img_dir = "./data/train"

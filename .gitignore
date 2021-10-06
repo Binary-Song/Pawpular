@@ -1,6 +1,2 @@
-*.bin
-*.csv
-*.jpg
-./data
-./__pycache__/**
-*.pyc
+data/
+__pycache__/
