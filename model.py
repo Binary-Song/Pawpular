@@ -21,14 +21,20 @@ class PawpularDatasetImagePreprocessor:
     def fit(self, X):
         pass
 
-    def transform(self, X): 
+    def transform(self, X: torch.Tensor, training=True):  
+        p = 0.5
         T = tv.transforms.Compose([ 
+            tv.transforms.RandomAutocontrast(p=p),
+            tv.transforms.RandomRotation(8, interpolation=tv.transforms.InterpolationMode.BILINEAR),
+            tv.transforms.RandomResizedCrop(128, (0.9, 1), (0.9, 1.1)),
+            tv.transforms.RandomHorizontalFlip(p=p),
             tv.transforms.Normalize(
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225],
             ),
         ])
-        t = T(X)
+
+        t = T( X  ) 
         # n = t.cpu().numpy()
         # plt.imshow(np.transpose(n[0], (1,2,0)))
         # plt.imshow(np.transpose(X[0], (1,2,0)))
@@ -40,10 +46,13 @@ class PawpularDatasetLabelPreprocessor:
     def __init__(self): 
         self.bins = np.array([0,18,23,27,30,33,37,43,51,66,101])
    
-    def transform(self, y):
-        return torch.from_numpy(np.digitize(y, self.bins) - 1) # 0-9 属于那一组
+    def transform(self, y, training=True):
+        if training == True:
+            return torch.from_numpy(np.digitize(y, self.bins) - 1) # 0-9 属于那一组
+        else:
+            return y
     
-    def inverse_transform(self, y):
+    def inverse_transform(self, y, training=True):
         y = y.cpu()
         y_l = self.bins[np.argmax(y,axis=1)]
         y_h = self.bins[np.argmax(y,axis=1) + 1]
@@ -59,7 +68,7 @@ class BasicBlock(nn.Module):
 
         self.conv1 = conv(inplanes, outplanes, stride=stride)
         self.bn1 = nn.BatchNorm2d(outplanes)
-        self.activ = nn.SELU(inplace=True)
+        self.activ = nn.SELU()
         self.conv2 = conv(outplanes, outplanes)
         self.bn2 = nn.BatchNorm2d(outplanes)
 
@@ -88,50 +97,64 @@ class BasicBlock(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(
-        self, 
-        layers  
+        self
     ): 
         super().__init__()
     
-        self.activ = nn.ReLU()
-    
-        self.conv1 = conv(1,  64, kernel_size=3, padding=1,stride=1,bias=True) 
-        self.conv2 = conv(64, 128, kernel_size=3, padding=1,stride=1, bias=True) 
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-      
-        self.dropout = nn.Dropout(p=0.5)
-        self.fc1 = nn.Linear(14*14*128,1024) 
-        self.fc2 = nn.Linear(1024, 10) 
+        self.conv1 = conv(3, 64, kernel_size=7, padding=3, stride=1, bias=True)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.activ = nn.SELU()
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        self.softmax = nn.Softmax(dim=1) 
+        self.res1 = self._make_layer(inplanes=64,outplanes=64, blocks=3,stride=1)
+        self.res2 = self._make_layer(inplanes=64,outplanes=128, blocks=4,stride=2)
+        self.res3 = self._make_layer(inplanes=128,outplanes=256, blocks=6,stride=2)
+        self.res4 = self._make_layer(inplanes=256,outplanes=512, blocks=3,stride=2)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+
+        self.fc1 = nn.Linear(512, 10)  
+
+        self.softmax = nn.Softmax(dim=1)
+
+        self.y_encoder = PawpularDatasetLabelPreprocessor()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv1(x)   
+        x = self.bn1(x)
         x = self.activ(x)
-        x = self.conv2(x)
-        x = self.activ(x)
-        x = self.pool(x) 
+
+        x = self.maxpool(x)
+        x = self.res1(x)
+        x = self.res2(x)
+        x = self.res3(x)
+        x = self.res4(x)
+        x = self.avgpool(x)
 
         x = torch.flatten(x, 1)
 
-        x = self.fc1(x)
-        x = self.activ(x) 
-        x = self.dropout(x)
-        x = self.fc2(x) 
-
+        x = self.fc1(x) 
         x = self.softmax(x)
- 
+
+        if self.training == False: # eval mode
+           x = self.y_encoder.inverse_transform(x) 
         return x
 
     def get_loss_fn(self): 
-        return nn.CrossEntropyLoss()
-      
-
+        return nn.MSELoss()
+    
     def _make_layer(self, inplanes, outplanes, blocks, stride=1):
+        '''
+        创建残差层
+        inplanes: 输入的channel数量
+        outplanes: 输出的channel数量
+        blocks: 残差层主路Block数。
+        '''
         downsample = None
-        if stride != 1 or inplanes != outplanes:
+        if inplanes != outplanes:
+            # 此为短接采样层。当主路输出通道数或长宽与输入不同时，短路须用1*1卷积采样使维度一致
             downsample = nn.Sequential(
-                conv(inplanes, outplanes,kernel_size=1,stride=stride,padding=0),
+                conv(inplanes, outplanes, kernel_size=1,stride=stride,padding=0),
                 nn.BatchNorm2d(outplanes)
                 )
         layers = []
@@ -173,3 +196,4 @@ class BaselineModel(nn.Module):
             x = self.one_hot.transform(x.cpu())
             x = torch.from_numpy(x).to(self.device)
         return x
+

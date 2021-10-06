@@ -67,4 +67,30 @@ class RocAucScore:
         '''
         return met.roc_auc_score(targets, outputs, average=self.average, multi_class=self.multi_class)
     
+class R2Score:
 
+    def __init__(self ):
+        ''' 
+        ''' 
+        self.name = 'r-square' 
+    
+    def __call__(self, targets, outputs):
+        '''
+        targets (numpy, N*1): 目标列 
+        outputs (numpy, N*1): 输出列 
+        '''
+        return met.r2_score(targets, outputs)
+
+class NegMeanAbsError:
+
+    def __init__(self ):
+        ''' 
+        ''' 
+        self.name = 'neg-mean-abs-err' 
+    
+    def __call__(self, targets, outputs):
+        '''
+        targets (numpy, N*1): 目标列 
+        outputs (numpy, N*1): 输出列 
+        '''
+        return -met.mean_absolute_error(targets, outputs)

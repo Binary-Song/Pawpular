@@ -97,7 +97,7 @@ def do_epochs(epochs, train_loader, valid_loader, model, optimizer, baseline_mod
                 xxx_baseline_str = f'{Fore.GREEN}above baseline{Fore.RESET}'
 
             print(
-                f'    valid {score_name}: {get_value_str(score)} {delta_str}, {xxx_baseline_str} ({get_value_str(score_bl)})')
+                f'    valid {score_name}: {get_value_str(score)} {delta_str}, {xxx_baseline_str} (bl={get_value_str(score_bl)})')
 
         last_epoch_scores = valid_scores
 
@@ -110,7 +110,7 @@ def train_baseline(loader: DataLoader, model, y_prepro):
     for _, targets in tqdm.tqdm(loader, 'training baseline'):
 
         if y_prepro is not None:
-            targets = y_prepro.transform(targets)
+            targets = y_prepro.transform(targets, training=True)
 
         y = np.vstack((y.reshape(-1, 1), targets.reshape(-1, 1)))
 
@@ -126,10 +126,10 @@ def train(loader, model, optimizer,  X_preprocessor=None, y_preprocessor=None, d
     for inputs, targets in tqdm.tqdm(loader, 'training'):
 
         if X_preprocessor is not None:
-            inputs = X_preprocessor.transform(inputs)
+            inputs = X_preprocessor.transform(inputs, training=True)
 
         if y_preprocessor is not None:
-            targets = y_preprocessor.transform(targets)
+            targets = y_preprocessor.transform(targets, training=True)
 
         inputs = inputs.to(device, dtype=torch.float)
 
@@ -156,10 +156,10 @@ def evaluate(loader, model, X_preprocessor=None, y_preprocessor=None, device='cu
         for inputs, targets in tqdm.tqdm(loader, 'evaluating'):
 
             if X_preprocessor is not None:
-                inputs = X_preprocessor.transform(inputs)
+                inputs = X_preprocessor.transform(inputs, training=False)
 
             if y_preprocessor is not None:
-                targets = y_preprocessor.transform(targets)
+                targets = y_preprocessor.transform(targets, training=False)
 
             inputs = inputs.to(device, dtype=torch.float)
             targets = torch.reshape(targets.to(

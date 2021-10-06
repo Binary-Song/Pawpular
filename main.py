@@ -67,85 +67,60 @@ if __name__ == '__main__':
     transform = transforms.Compose([transforms.ToTensor(),
                                transforms.Normalize(mean=[0.5, ],std=[0.5, ])])
 
-    data_train = datasets.MNIST(root = "./data/",
-                                transform=transform,
-                                train = True,
-                                download = True)
-    
-    data_test = datasets.MNIST(root = "./data/",
-                            transform=transform,
-                            train = False,
-                            download = True)
-                                
-    train_loader = DataLoader(
-                            dataset=data_train,
-                            batch_size = 64,
-                            shuffle=True)
-    
-    valid_loader = DataLoader(
-                            dataset=data_test,
-                            batch_size = 64,
-                            shuffle=True)
+    df = pd.read_csv(train_csv).sample(frac=1.0,random_state=42)
 
-    model = ResNet([1,1,1,1]).to(device)  
+    paths = get_img_paths(df) # array
+    targets = get_targets(df) # numpy
 
-    baseline_model = BaselineModel(device, as_long=True, output_proba=True)
+    src = ImageSource(resize=(128,128))
+    src.load_cache(cache_path)
 
-    optim = torch.optim.Adam(model.parameters()) 
+    model = ResNet().to(device)  
 
-    do_epochs(
-        epochs=1000, 
-        train_loader=train_loader, 
-        valid_loader=valid_loader, 
-        model=model,
-        baseline_model=baseline_model,
-        optimizer=optim,  
-        metrics=[
-                AccuracyScore(),
-                F1Score(average='weighted'),
-                RocAucScore(average='macro', multi_class='ovr'), 
-                RocAucScore(average='weighted', multi_class='ovr'),], 
-        X_prepro=None, 
-        y_prepro=None, 
-        device=device)
+    baseline_model = BaselineModel(device, as_long=False, output_proba=False)
+ 
 
-        # train_plans = [{"name": "baseline", 
-        #                 "model": baseline, 
-        #                 "epochs": 1,
-        #                 "optim": None},
+    fold_maker = KFold(n_splits=5, shuffle=True, random_state=42)
+    for k, (train_idx, valid_idx) in enumerate(
+        fold_maker.split(X=paths, y=targets)):
 
-        #                {"name": "model", 
-        #                 "model": model, 
-        #                 "epochs": epochs,
-        #                 "optim": optim}]
+        print(f"fold {k}")
 
-        # for plan in train_plans:
+        img_size = (224, 224)
+        batch_size = 32
+        num_workers = 0
 
-        #     name = plan['name']
-        #     model = plan['model']
-        #     epochs = plan['epochs']
-        #     optim = plan['optim']
+        train_set = ImageDataset(
+            paths=[paths[i] for i in train_idx],
+            src=src,
+            targets=targets[train_idx],
+            resize=img_size)
 
-        #     print(f"training: {name}")
+        valid_set = ImageDataset(
+            paths=[paths[i] for i in valid_idx],
+            src=src,
+            targets=targets[valid_idx],
+            resize=img_size)
 
-        #     for epoch in range(epochs): 
-        #         train_loss = engine.train(
-        #             train_loader,
-        #             model, 
-        #             optimizer=optim, 
-        #             loss_fn=nn.CrossEntropyLoss(),
-        #             device=device, 
-        #             X_preprocessor=X_prep,
-        #             y_preprocessor=y_prep)
+        train_loader = DataLoader(
+            train_set, batch_size=batch_size, num_workers=num_workers)
 
-        #         output, targets = engine.evaluate(
-        #             valid_loader,
-        #             model, 
-        #             device=device, 
-        #             X_preprocessor=X_prep, 
-        #             y_preprocessor=y_prep)
+        valid_loader = DataLoader(
+            valid_set, batch_size=batch_size, num_workers=num_workers)
+  
+        optim = torch.optim.Adam(model.parameters()) 
 
-        #         valid_r2 = metrics.r2_score(targets, output)
-        #         valid_error = metrics.mean_absolute_error(targets, output)
-
-        #         print( f"epoch {epoch}/{epochs}, train loss {train_loss}, valid R-square {valid_r2}, valid error {valid_error}")
+        do_epochs(
+            epochs=1000, 
+            train_loader=train_loader, 
+            valid_loader=valid_loader, 
+            model=model,
+            baseline_model=baseline_model,
+            optimizer=optim,  
+            metrics=[ 
+                    R2Score(),
+                    NegMeanAbsError()
+                    ], 
+            X_prepro=PawpularDatasetImagePreprocessor(),
+            y_prepro=PawpularDatasetLabelPreprocessor(),
+            device=device) 
