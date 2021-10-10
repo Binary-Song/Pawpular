@@ -5,7 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: main.py",
+            "name": "Debug (Trimmed Data)",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "args": ["-d"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Debug (Full Data)",
             "type": "python",
             "request": "launch",
             "program": "main.py",

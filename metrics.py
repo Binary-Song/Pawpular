@@ -94,3 +94,31 @@ class NegMeanAbsError:
         outputs (numpy, N*1): 输出列 
         '''
         return -met.mean_absolute_error(targets, outputs)
+
+class ExplainedVariance:
+
+    def __init__(self ):
+        ''' 
+        ''' 
+        self.name = 'expln-var' 
+    
+    def __call__(self, targets, outputs):
+        '''
+        targets (numpy, N*1): 目标列 
+        outputs (numpy, N*1): 输出列 
+        '''
+        return met.explained_variance_score(targets, outputs)
+
+class NegMaxError:
+
+    def __init__(self ):
+        ''' 
+        ''' 
+        self.name = 'max-err' 
+    
+    def __call__(self, targets, outputs):
+        '''
+        targets (numpy, N*1): 目标列 
+        outputs (numpy, N*1): 输出列 
+        '''
+        return -met.max_error(targets, outputs)

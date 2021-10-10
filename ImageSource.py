@@ -7,28 +7,45 @@ from tqdm import tqdm
  
 class ImageSource:
     
-    def __init__(self, resize=None, transpose_for_torch = True, cache_max_size = math.inf): 
-        self.resize = resize
-        self.transpose_for_torch = transpose_for_torch
+    def __init__(self, cache_max_size = math.inf):
+        '''
+        图像集合，负责从缓存或硬盘中读取图像，亦可将缓存写入硬盘。
+        '''
         self.cache = {}
         self.cache_max_size = cache_max_size
 
-    def make_cache(self, paths, output_path = None): 
+    def make_cache(self, paths, output_path, resize = None): 
+        '''
+        制作缓存
+        paths ([str]): 图像的路径
+        output_path (str): 图像的输出路径
+        resize ((int,int)): 若不为None，则将图像缩放后保存
+        '''
         for path in tqdm(paths, desc='making cache'):
-            self.cache[path] = self.read_image(path)
-        if output_path is not None:
-            with open(output_path, 'wb') as file:
-                pickle.dump(self.cache, file)
+            self.cache[path] = self.read_image(path, resize = resize)
+ 
+        with open(output_path, 'wb') as file:
+            pickle.dump(self.cache, file)
     
     def load_cache(self, input_path):
+        '''
+        加载缓存
+        input_path (str): 缓存文件路径 
+        '''
         with open(input_path,'rb') as file:
             self.cache = pickle.load(file)
 
-    def read_image(self, path):
+    def read_image(self, path, resize = None):
+        '''
+        从文件系统中读取图像 
+        path (str): 路径
+        resize ((int,int)): 若不为None，则将图像缩放
+        返回 (numpy): 图像张量。形状：(C,H,W)，像素值用0-1内的float32表示。
+        '''
         img = io.imread(path) 
-        if self.resize is not None:
-            img = imgt.resize(img, self.resize) 
-        img = np.transpose(img, (2, 0, 1)).astype(np.float32)
+        if resize is not None:
+            img = imgt.resize(img, resize) 
+        img = np.transpose(img, (2, 0, 1)).astype(np.float32) # H W C -> C H W
         return img
 
     def __len__(self):

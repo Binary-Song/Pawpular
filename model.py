@@ -9,37 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np  
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import OneHotEncoder
+import torchvision.transforms.functional as functional
 
-class PawpularDatasetImagePreprocessor:
-    
-    def __init__(self):
-        pass
-
-    def partial_fit(self, X): 
-        pass
-    
-    def fit(self, X):
-        pass
-
-    def transform(self, X: torch.Tensor, training=True):  
-        p = 0.5
-        T = tv.transforms.Compose([ 
-            tv.transforms.RandomAutocontrast(p=p),
-            tv.transforms.RandomRotation(8, interpolation=tv.transforms.InterpolationMode.BILINEAR),
-            tv.transforms.RandomResizedCrop(128, (0.9, 1), (0.9, 1.1)),
-            tv.transforms.RandomHorizontalFlip(p=p),
-            tv.transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225],
-            ),
-        ])
-
-        t = T( X  ) 
-        # n = t.cpu().numpy()
-        # plt.imshow(np.transpose(n[0], (1,2,0)))
-        # plt.imshow(np.transpose(X[0], (1,2,0)))
-        # plt.show()
-        return t  
 
 class PawpularDatasetLabelPreprocessor:
 
@@ -94,16 +65,16 @@ class BasicBlock(nn.Module):
         return out
 
 
-class ResNet(nn.Module):
+class MyNet(nn.Module):
 
     def __init__(
         self
-    ): 
+    ):
         super().__init__()
-    
+
         self.conv1 = conv(3, 64, kernel_size=7, padding=3, stride=1, bias=True)
         self.bn1 = nn.BatchNorm2d(64)
-        self.activ = nn.SELU()
+        self.activ = nn.ELU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.res1 = self._make_layer(inplanes=64,outplanes=64, blocks=3,stride=1)
@@ -113,31 +84,40 @@ class ResNet(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d((1,1))
 
-        self.fc1 = nn.Linear(512, 10)  
+        self.fc1 = nn.Linear(86528, 256, False)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.fc2 = nn.Linear(256, 1, False) 
 
         self.softmax = nn.Softmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
 
-        self.y_encoder = PawpularDatasetLabelPreprocessor()
+        self.lastw = None
+
+        #self.y_encoder = PawpularDatasetLabelPreprocessor()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv1(x)   
         x = self.bn1(x)
         x = self.activ(x)
-
         x = self.maxpool(x)
+
         x = self.res1(x)
+        x = self.activ(x)
         x = self.res2(x)
+        x = self.activ(x)
         x = self.res3(x)
-        x = self.res4(x)
-        x = self.avgpool(x)
+        x = self.activ(x)
+        x = self.res4(x) 
+        x = self.activ(x)
 
         x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = self.bn2(x)
+        x = self.activ(x)
+        x = self.fc2(x) 
 
-        x = self.fc1(x) 
-        x = self.softmax(x)
+        x = self.sigmoid(x) * 100
 
-        if self.training == False: # eval mode
-           x = self.y_encoder.inverse_transform(x) 
         return x
 
     def get_loss_fn(self): 
@@ -163,7 +143,8 @@ class ResNet(nn.Module):
             layers.append(BasicBlock(outplanes, outplanes ))
         return nn.Sequential(*layers)
 
-
+    def _to_numpy(self, x):
+        return x.cpu().detach().numpy()
 
 
 class BaselineModel(nn.Module):
