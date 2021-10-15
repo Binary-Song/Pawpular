@@ -75,7 +75,7 @@ if __name__ == '__main__':
     if use_trimmed_data == True:
         print(f"{Fore.BLACK}{Back.YELLOW} warning: using trimmed data {Back.RESET}{Fore.RESET}")
 
-    MAKE_CACHE = True
+    MAKE_CACHE = False
 
     if MAKE_CACHE == True:
         make_cache(resize=(256,256),train_csv=train_csv)
@@ -98,6 +98,7 @@ if __name__ == '__main__':
 
     src = ImageSource()
     src.load_cache(cache_path)
+    print(f"Cache loaded. ({cache_path})")
 
     model = MyNet().to(device)
 
