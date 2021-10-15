@@ -4,26 +4,30 @@ import skimage.io as io
 import numpy as np
 import math
 from tqdm import tqdm
- 
+import os
 class ImageSource:
     
     def __init__(self, cache_max_size = math.inf):
         '''
-        图像集合，负责从缓存或硬盘中读取图像，亦可将缓存写入硬盘。
+        图像数据源，负责从缓存或硬盘中读取图像，亦可将缓存写入硬盘。
         '''
         self.cache = {}
         self.cache_max_size = cache_max_size
 
-    def make_cache(self, paths, output_path, resize = None): 
+    def make_cache(self, paths, output_path, resize = None, index_full_path = False): 
         '''
         制作缓存
         paths ([str]): 图像的路径
         output_path (str): 图像的输出路径
         resize ((int,int)): 若不为None，则将图像缩放后保存
+        index_full_path: 默认self.cache的key仅包含文件名，若
         '''
         for path in tqdm(paths, desc='making cache'):
-            self.cache[path] = self.read_image(path, resize = resize)
- 
+            if index_full_path == False:
+                self.cache[os.path.basename(path)] = self.read_image(path, resize = resize)
+            else:
+                self.cache[path] = self.read_image(path, resize = resize)
+
         with open(output_path, 'wb') as file:
             pickle.dump(self.cache, file)
     
@@ -52,6 +56,9 @@ class ImageSource:
         return len(self.cache)
 
     def __getitem__(self, path):
+        '''
+        从缓存读取图像，没有则从文件系统中读取图像并放入缓存。
+        '''
         if path in self.cache: 
             return self.cache[path]
         else:
@@ -59,5 +66,3 @@ class ImageSource:
             if len(self.cache) < self.cache_max_size:
                 self.cache[path] = img
             return img
-    
-    

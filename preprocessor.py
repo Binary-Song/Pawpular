@@ -10,7 +10,9 @@ from torch.utils.data import DataLoader
 from sklearn.preprocessing import OneHotEncoder
 
 class MyAug:
-    
+    '''
+    数据增强器。输入输出均为np.array。
+    '''
     def __init__(self, resize, crop_size):
         self.crop_size = crop_size
         self.resize = resize

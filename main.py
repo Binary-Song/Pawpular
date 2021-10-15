@@ -19,22 +19,30 @@ from torchvision import datasets, transforms
 
 from metrics import *
 
-train_img_dir = "./data/train"
-save_dir = "./log/checkpoints/"
+# 存放训练图片的文件夹 
+train_img_dir = R'D:\Projects\DeepLearning\data\Pawpular\data\train'
+# 将在此目录写入模型存档
+save_dir = R"log/checkpoints/"
+# 缓存文件路径
+cache_path = R"D:\Projects\DeepLearning\data\Pawpular\data_portable\cache\image_cache.pickle.bin"
+# 训练集文件路径（全）
+train_csv = R'D:\Projects\DeepLearning\data\Pawpular\data_portable\train.csv'
+# 训练集文件路径（简）
+train_csv_debug = R'D:\Projects\DeepLearning\data\Pawpular\data_portable\train_d.csv'
 
-if len(sys.argv) >= 2 and sys.argv[1] == '-d':
-    train_csv = "./data/train_small.csv"
-    use_trimmed_data = True
-else:
-    train_csv = "./data/train.csv"
-    use_trimmed_data = False
 
-cache_path = "./data/cache/image_cache.pickle.bin"
 
-def get_img_paths(df): 
+def get_img_names(df): 
     paths = []
     for fname in df["Id"]:
-        path = f"{train_img_dir}/{fname}.jpg"
+        path = f"{fname}.jpg"
+        paths.append(path)
+    return paths
+
+def get_img_paths(df):
+    paths = []
+    for fname in df["Id"]:
+        path = os.path.join(train_img_dir, f"{fname}.jpg")
         paths.append(path)
     return paths
 
@@ -42,7 +50,7 @@ def get_targets(df):
     targets = df["Pawpularity"].to_numpy(dtype=np.float64) 
     return targets
 
-def make_cache(resize):
+def make_cache(resize, train_csv):
     if os.path.isfile(cache_path):
         ans = input('cache exists, override? (y/n)')
         if ans == 'y':
@@ -56,13 +64,21 @@ def make_cache(resize):
 
 if __name__ == '__main__':
 
-    if use_trimmed_data:
-        print(f"{Fore.RED}{Back.WHITE} warning: using trimmed data {Back.RESET}{Fore.RESET}")
+    # 如果有-d参数，则使用简化版数据（仅50行，debug用）
+    if len(sys.argv) >= 2 and sys.argv[1] == '-d': 
+        train_csv = train_csv_debug
+        use_trimmed_data = True
+    else: 
+        train_csv = train_csv
+        use_trimmed_data = False
 
-    MAKE_CACHE = False
+    if use_trimmed_data == True:
+        print(f"{Fore.BLACK}{Back.YELLOW} warning: using trimmed data {Back.RESET}{Fore.RESET}")
+
+    MAKE_CACHE = True
 
     if MAKE_CACHE == True:
-        make_cache(resize=(256,256))
+        make_cache(resize=(256,256),train_csv=train_csv)
         exit()
 
     resize = 220
@@ -77,7 +93,7 @@ if __name__ == '__main__':
 
     df = pd.read_csv(train_csv).sample(frac=1.0,random_state=42)
 
-    paths = get_img_paths(df) # array
+    paths = get_img_names(df) # array
     targets = get_targets(df) # numpy
 
     src = ImageSource()
