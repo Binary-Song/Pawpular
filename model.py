@@ -1,5 +1,4 @@
-import torch.nn as nn
-import pretrainedmodels 
+import torch.nn as nn 
 import torch 
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -77,10 +76,10 @@ class MyNet(nn.Module):
         self.activ = nn.ELU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        self.res1 = self._make_layer(inplanes=64,outplanes=64, blocks=3,stride=1)
-        self.res2 = self._make_layer(inplanes=64,outplanes=128, blocks=4,stride=2)
-        self.res3 = self._make_layer(inplanes=128,outplanes=256, blocks=6,stride=2)
-        self.res4 = self._make_layer(inplanes=256,outplanes=512, blocks=3,stride=2)
+        self.res1 = self._make_layer(inplanes=64,outplanes=64, blocks=6,stride=1)
+        self.res2 = self._make_layer(inplanes=64,outplanes=128, blocks=8,stride=2)
+        self.res3 = self._make_layer(inplanes=128,outplanes=256, blocks=12,stride=2)
+        self.res4 = self._make_layer(inplanes=256,outplanes=512, blocks=6,stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1,1))
 

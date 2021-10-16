@@ -20,15 +20,15 @@ from torchvision import datasets, transforms
 from metrics import *
 
 # 存放训练图片的文件夹 
-train_img_dir = R'D:\Projects\DeepLearning\data\Pawpular\data\train'
+train_img_dir = R'not available'
 # 将在此目录写入模型存档
-save_dir = R"log/checkpoints/"
+save_dir = R"./log/checkpoints/"
 # 缓存文件路径
-cache_path = R"D:\Projects\DeepLearning\data\Pawpular\data_portable\cache\image_cache.pickle.bin"
+cache_path = R"/root/Desktop/ml/Pawpular/data_portable/cache/image_cache.pickle.bin"
 # 训练集文件路径（全）
-train_csv = R'D:\Projects\DeepLearning\data\Pawpular\data_portable\train.csv'
+train_csv = R'/root/Desktop/ml/Pawpular/data_portable/train.csv'
 # 训练集文件路径（简）
-train_csv_debug = R'D:\Projects\DeepLearning\data\Pawpular\data_portable\train_d.csv'
+train_csv_debug = R'/root/Desktop/ml/Pawpular/data_portable/train_d.csv'
 
 
 
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         print(f"-- fold {k} --")
 
-        batch_size = 24
+        batch_size = 26
         num_workers = 0
 
         train_set = ImageDataset(
@@ -133,8 +133,8 @@ if __name__ == '__main__':
         valid_loader = DataLoader(
             valid_set, batch_size=batch_size, num_workers=num_workers)
 
-        optim = torch.optim.AdamW(model.parameters(), lr=0.02, weight_decay=0.01)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optim, T_max=35, eta_min=0.00001)
+        optim = torch.optim.AdamW(model.parameters(), lr=0.002, weight_decay=0.02)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optim, T_max=40, eta_min=0.00001)
         do_epochs(
             epochs=1000,
             train_loader=train_loader, 
@@ -148,5 +148,5 @@ if __name__ == '__main__':
             y_prepro=None,
             device=device,
             save_dir=save_dir,
-            #load_path='./log/checkpoints/20211008T175343/params_at_epoch_25.bin'
+            load_path='log/checkpoints/20211015T233232/params_at_epoch_8.bin'
             )

@@ -1,0 +1,12 @@
+1. 执行：（改端口号）
+./scripts/copy-key.ps1 wx.blockelite.cn 11110 root 
+ssh root@wx.blockelite.cn -p 
+
+2. 登录远程，执行：
+
+
+2. 执行create_env中脚本
+百度网盘下载cache
+在桌面执行
+git clone https://gitee.com/Binary-Song/Pawpular
+完事

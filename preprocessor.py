@@ -20,7 +20,8 @@ class MyAug:
         self.T = A.Compose([
             A.Resize(height=resize, width=resize, always_apply=True),
             A.RandomCrop(width=crop_size, height=crop_size),
-            A.HorizontalFlip(p=0.5)
+            A.HorizontalFlip(p=0.5),
+            A.Normalize(max_pixel_value=1.0,always_apply=True)
         ]) 
     
     def _show_tensor_hwc(self, X):
@@ -29,7 +30,8 @@ class MyAug:
     def _show_tensor_chw(self, X): 
         plt.imshow(np.transpose(X, (1,2,0)))
 
-    def transform(self, X, training=True): 
+    def transform(self, X, training=True):  
+
         # self._show_tensor_chw(X)
         X = np.transpose(X, (1,2,0)) # C H W -> H W C
         X = self.T(image=X)['image']
